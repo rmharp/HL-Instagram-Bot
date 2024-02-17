@@ -14,22 +14,33 @@ if(!require(netstat)) {install.packages("netstat"); library(netstat)}
 if(!require(xml2)) {install.packages("xml2"); library(xml2)}
 if(!require(webdriver)) {install.packages("webdriver"); library(webdriver)}
 if(!require(purrr)) {install.packages("purrr"); library(purrr)}
+if (!require(here)) {install.packages("here"); library(here)}
+if (!require(dotenv)) {install.packages("dotenv"); library(dotenv)}
 
-# For Debugging Purposes
-#ChromeCommand <- chrome(retcommand = T, verbose = F, check = F)
-#ChromeCommand
+setwd(here())
+# Define .env content
+env_content <- ""
+# Write to .env file in the current working directory
+if (nchar(env_content) > 0) {
+  cat(env_content, file = ".env", append = TRUE, sep = "\n")
+}
+dotenv::load_dot_env(".env")
+# Read the contents of the .env file
+print(readLines(".env"))
+```
 
+```{r}
 # Enter your ONYEN and password
-HLusername <- ""
-HLpassword <- ""
+HLusername <- Sys.getenv("HL_USERNAME")
+HLpassword <- Sys.getenv("HL_PASSWORD")
 
 # Change to TRUE if instagram URLs haven't yet been webscraped
 heellife = FALSE
 
 # Enter your Instagram username and password
-username <- ""
-password <- ""
-followLimit <- 150
+IGusername <- Sys.getenv("IG_USERNAME")
+IGpassword <- Sys.getenv("IG_PASSWORD")
+followLimit <- 100
 
 
 # Start the Selenium server with a specified port (e.g., 4567)
@@ -71,7 +82,7 @@ if (heellife == TRUE) {
   pages <- vector("list", length(links))
   for (i in seq_along(links)) {
     remDr$navigate(paste0("https://heellife.unc.edu", links[i]))
-    Sys.sleep(0.5)
+    Sys.sleep(1)
     page_raw <- remDr$getPageSource()
     html_raw <- xml2::read_html(page_raw[[1]])
     pages[[i]] <- html_raw
@@ -92,16 +103,20 @@ if (heellife == TRUE) {
     )
     org_info <- rbind(org_info, new_org)
   }
-  instagrams <- org_info$Instagram
+  #Save to csv
+  write.csv(org_info, "org_info.csv", row.names = FALSE)
 }
 
+org_info <- read.csv("org_info.csv")
+instagrams <- org_info$Instagram
 # Navigate to a website and login
 remDr$navigate("https://www.instagram.com/")
 Sys.sleep(1)
 login <- remDr$findElement(using = 'name', value = 'username')
-login$sendKeysToElement(list(username))
+login$sendKeysToElement(list(IGusername))
+Sys.sleep(1)
 pass <- remDr$findElement(using = 'name', value = 'password')
-pass$sendKeysToElement(list(password))
+pass$sendKeysToElement(list(IGpassword))
 signin_button <- remDr$findElement(using = "css", value = "button[type='submit']")
 signin_button$highlightElement()
 signin_button$clickElement()
@@ -116,8 +131,9 @@ Sys.sleep(5)
 # search_input$clickElement()
 # search_input$sendKeysToElement(list(instagrams))
 
+followedCount <- 0
 for (i in seq_along(instagrams)) {
-  if (!is.na(instagrams[i])) {
+   if (!is.na(instagrams[i]) && followedCount < followLimit) {
     remDr$navigate(instagrams[i])
     match <- regexpr("(?<=https://www\\.instagram\\.com/)[^/]+", instagrams[i], perl = TRUE)
     extracted_string <- regmatches(instagrams[i], match)[[1]]
@@ -129,6 +145,9 @@ for (i in seq_along(instagrams)) {
     remDr$navigate(paste0(instagrams[i], "followers/"))
     Sys.sleep(5)
     for (j in 1:followersNumber) {
+      if (followedCount >= followLimit) {
+        break # Stop if follow limit is reached
+      }
       if (j %% 8 == 0) {
         remDr$executeScript("window.scrollTo(0, document.body.scrollHeight);")
       }
@@ -137,6 +156,7 @@ for (i in seq_along(instagrams)) {
         follow_button$highlightElement()
         follow_button$clickElement()
         # Wait for 1 second after clicking
+        followedCount <- followedCount + 1
         Sys.sleep(5)
       }, error = function(e){
         message("Error clicking follow button: ", e$message)
@@ -144,18 +164,13 @@ for (i in seq_along(instagrams)) {
         Sys.sleep(0.1)
       })
     }
+   }
+  if (followedCount >= followLimit) {
+    break
   }
 }
 
 # Close the browser when done
 remDr$close()
 rD$server$stop()
-```
-
-```{r}
-
-```
-
-```{r}
-
 ```
