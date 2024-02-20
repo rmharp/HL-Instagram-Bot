@@ -4,7 +4,7 @@
 #' date: "`r Sys.Date()`"
 #' ---
 #' 
-## --------------------------------------------------------------------------------------------------------------------
+## -----------------------------------------------------------------------------------------------------
 if(!require(dplyr)) {install.packages("dplyr"); library(dplyr)}
 if(!require(tidyverse)) {install.packages("tidyverse"); library(tidyverse)}
 if(!require(rvest)) {install.packages("rvest"); library(rvest)}
@@ -16,6 +16,7 @@ if(!require(webdriver)) {install.packages("webdriver"); library(webdriver)}
 if(!require(purrr)) {install.packages("purrr"); library(purrr)}
 if (!require(here)) {install.packages("here"); library(here)}
 if (!require(dotenv)) {install.packages("dotenv"); library(dotenv)}
+detach("package:gmailr", unload = TRUE)
 
 setwd(here())
 # Define .env content
@@ -29,7 +30,7 @@ dotenv::load_dot_env(".env")
 print(readLines(".env"))
 
 #' 
-## --------------------------------------------------------------------------------------------------------------------
+## -----------------------------------------------------------------------------------------------------
 # Enter your ONYEN and password
 HLusername <- Sys.getenv("HL_USERNAME")
 HLpassword <- Sys.getenv("HL_PASSWORD")
@@ -40,7 +41,7 @@ heellife = FALSE
 # Enter your Instagram username and password
 IGusername <- Sys.getenv("IG_USERNAME")
 IGpassword <- Sys.getenv("IG_PASSWORD")
-followLimit <- 100
+followLimit <- 90
 
 
 # Start the Selenium server with a specified port (e.g., 4567)
@@ -148,20 +149,26 @@ for (i in seq_along(instagrams)) {
       if (followedCount >= followLimit) {
         break # Stop if follow limit is reached
       }
-      if (j %% 8 == 0) {
-        remDr$executeScript("window.scrollTo(0, document.body.scrollHeight);")
-      }
       tryCatch({
         follow_button <- remDr$findElement(using = "xpath", value = "//div[contains(@class, '_aano')]//button[.//div[. = 'Follow']]")
         follow_button$highlightElement()
         follow_button$clickElement()
-        # Wait for 1 second after clicking
         followedCount <- followedCount + 1
-        Sys.sleep(5)
-      }, error = function(e){
+        Sys.sleep(5) # Wait after clicking
+      }, error = function(e) {
         message("Error clicking follow button: ", e$message)
-        remDr$executeScript("window.scrollTo(0, document.body.scrollHeight);")
-        Sys.sleep(0.1)
+        remDr$executeScript("
+          (function() {
+          var elements = document.querySelectorAll('*');
+          for (var i = 0; i < elements.length; i++) {
+              var style = window.getComputedStyle(elements[i]);
+              if (style.overflowY === 'scroll' && style.position === 'relative') {
+                  elements[i].scrollTop = elements[i].scrollTop + elements[i].offsetHeight;
+                  return; // Exit after scrolling the first matching element
+              }
+            }
+          })();")
+        Sys.sleep(5)
       })
     }
    }
