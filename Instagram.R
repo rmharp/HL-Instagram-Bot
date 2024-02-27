@@ -16,7 +16,7 @@ if(!require(webdriver)) {install.packages("webdriver"); library(webdriver)}
 if(!require(purrr)) {install.packages("purrr"); library(purrr)}
 if (!require(here)) {install.packages("here"); library(here)}
 if (!require(dotenv)) {install.packages("dotenv"); library(dotenv)}
-detach("package:gmailr", unload = TRUE)
+#detach("package:gmailr", unload = TRUE)
 
 setwd(here())
 # Define .env content
@@ -41,7 +41,7 @@ heellife = FALSE
 # Enter your Instagram username and password
 IGusername <- Sys.getenv("IG_USERNAME")
 IGpassword <- Sys.getenv("IG_PASSWORD")
-followLimit <- 90
+followLimit <- 30
 
 
 # Start the Selenium server with a specified port (e.g., 4567)
@@ -133,7 +133,7 @@ Sys.sleep(5)
 # search_input$sendKeysToElement(list(instagrams))
 
 followedCount <- 0
-for (i in seq_along(instagrams)) {
+for (i in 2:length(instagrams)) {
    if (!is.na(instagrams[i]) && followedCount < followLimit) {
     remDr$navigate(instagrams[i])
     match <- regexpr("(?<=https://www\\.instagram\\.com/)[^/]+", instagrams[i], perl = TRUE)
@@ -154,7 +154,8 @@ for (i in seq_along(instagrams)) {
         follow_button$highlightElement()
         follow_button$clickElement()
         followedCount <- followedCount + 1
-        Sys.sleep(5) # Wait after clicking
+        print(paste0("You have followed ", followedCount))
+        Sys.sleep(3.5) # Wait after clicking
       }, error = function(e) {
         message("Error clicking follow button: ", e$message)
         remDr$executeScript("
@@ -168,7 +169,7 @@ for (i in seq_along(instagrams)) {
               }
             }
           })();")
-        Sys.sleep(5)
+        Sys.sleep(2.5)
       })
     }
    }
